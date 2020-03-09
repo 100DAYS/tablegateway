@@ -149,7 +149,7 @@ func (dao *TableGateway) Delete(id int64) (affectedRows int64, err error) {
 }
 
 func (dao *TableGateway) Find(id int64, target interface{}) error {
-	qb := dao.InitQueryBuilder().Where(dao.KeyFieldName+"=?", id)
+	qb := dao.SelectBuilder().Where(dao.KeyFieldName+"=?", id)
 	q, args, err := qb.ToSql()
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (dao *TableGateway) Find(id int64, target interface{}) error {
 	return dao.DB.Get(target, q, args...)
 }
 
-func (dao *TableGateway) InitQueryBuilder() squirrel.SelectBuilder {
+func (dao *TableGateway) SelectBuilder() squirrel.SelectBuilder {
 	return dao.sq.Select("*").From(dao.TableName)
 }
 
@@ -166,7 +166,7 @@ func (dao *TableGateway) Builder() squirrel.StatementBuilderType {
 }
 
 func (dao *TableGateway) FilterQuery(filters map[string]interface{}, order []string, offset uint64, limit int, into interface{}) error {
-	qb := dao.InitQueryBuilder().Where(filters).OrderBy(strings.Join(order, ",")).Offset(offset).Limit(uint64(limit))
+	qb := dao.SelectBuilder().Where(filters).OrderBy(strings.Join(order, ",")).Offset(offset).Limit(uint64(limit))
 	return dao.Query(qb, into)
 }
 

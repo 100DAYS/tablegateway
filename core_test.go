@@ -182,7 +182,7 @@ func TestGw(t *testing.T) {
 	fmt.Printf("Filter Result is %#v\n", pl)
 
 	pl2 := []Place{}
-	qb := pg.InitQueryBuilder().Where("country=?", "Germany").OrderBy("telcode")
+	qb := pg.SelectBuilder().Where("country=?", "Germany").OrderBy("telcode")
 	err = pg.Query(qb, &pl2)
 	if err != nil {
 		t.Errorf("Error filtering: %s", err)
