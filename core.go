@@ -123,7 +123,6 @@ func (dao *TableGateway) Insert(data interface{}) (lastInsertId int64, err error
 
 func (dao *TableGateway) Exec(qb squirrel.Sqlizer) (affected int64, err error) {
 	s, args, err := qb.ToSql()
-	fmt.Printf("QUERY: %s\n", s)
 	if err != nil {
 		return
 	}
