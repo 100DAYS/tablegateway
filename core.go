@@ -30,10 +30,24 @@ type TableGateway struct {
 	TableName    string
 	KeyFieldName string
 	names        string
+	isPostgres   bool
+	sq           squirrel.StatementBuilderType
 }
 
 func NewGw(DB *sqlx.DB, tableName string, keyFieldName string) TableGateway {
-	return TableGateway{DB: DB, TableName: tableName, KeyFieldName: keyFieldName}
+	isPgsql := (DB.DriverName() == "postgres")
+	tg := TableGateway{
+		DB:           DB,
+		TableName:    tableName,
+		KeyFieldName: keyFieldName,
+		isPostgres:   isPgsql,
+	}
+	if isPgsql {
+		tg.sq = squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	} else {
+		tg.sq = squirrel.StatementBuilder.PlaceholderFormat(squirrel.Question)
+	}
+	return tg
 }
 
 func NullString(s string) sql.NullString {
@@ -107,12 +121,9 @@ func (dao *TableGateway) Insert(data interface{}) (lastInsertId int64, err error
 	return
 }
 
-func (dao *TableGateway) Update(id int64, changes map[string]interface{}) (affected int64, err error) {
-	qb := squirrel.Update(dao.TableName).Where(dao.KeyFieldName+"=?", id)
-	for fieldname, value := range changes {
-		qb = qb.Set(fieldname, value)
-	}
+func (dao *TableGateway) Exec(qb squirrel.Sqlizer) (affected int64, err error) {
 	s, args, err := qb.ToSql()
+	fmt.Printf("QUERY: %s\n", s)
 	if err != nil {
 		return
 	}
@@ -124,24 +135,34 @@ func (dao *TableGateway) Update(id int64, changes map[string]interface{}) (affec
 	return
 }
 
-func (dao *TableGateway) Delete(id int64) (affectedRows int64, err error) {
-	q := fmt.Sprintf("DELETE from %s WHERE %s=?", dao.TableName, dao.KeyFieldName)
-	affectedRows = 0
-	res, err := dao.DB.Exec(q, id)
-	if err != nil {
-		return
+func (dao *TableGateway) Update(id int64, changes map[string]interface{}) (affected int64, err error) {
+	qb := dao.sq.Update(dao.TableName).Where(dao.KeyFieldName+"=?", id)
+	for fieldname, value := range changes {
+		qb = qb.Set(fieldname, value)
 	}
-	affectedRows, err = res.RowsAffected()
-	return
+	return dao.Exec(qb)
+}
+
+func (dao *TableGateway) Delete(id int64) (affectedRows int64, err error) {
+	qb := dao.sq.Delete(dao.TableName).Where(dao.KeyFieldName+"=?", id)
+	return dao.Exec(qb)
 }
 
 func (dao *TableGateway) Find(id int64, target interface{}) error {
-	q := fmt.Sprintf("SELECT * from %s WHERE %s=?", dao.TableName, dao.KeyFieldName)
-	return dao.DB.Get(target, q, id)
+	qb := dao.InitQueryBuilder().Where(dao.KeyFieldName+"=?", id)
+	q, args, err := qb.ToSql()
+	if err != nil {
+		return err
+	}
+	return dao.DB.Get(target, q, args...)
 }
 
 func (dao *TableGateway) InitQueryBuilder() squirrel.SelectBuilder {
-	return squirrel.Select("*").From(dao.TableName)
+	return dao.sq.Select("*").From(dao.TableName)
+}
+
+func (dao *TableGateway) Builder() squirrel.StatementBuilderType {
+	return dao.sq
 }
 
 func (dao *TableGateway) FilterQuery(filters map[string]interface{}, order []string, offset uint64, limit int, into interface{}) error {
