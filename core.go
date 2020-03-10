@@ -102,7 +102,20 @@ func (dao *TableGateway) Insert(data interface{}) (lastInsertId int64, err error
 	fields := dao.getDBFieldnames(data)
 	placeholders := makePlaceholders(fields)
 	q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", dao.TableName, fields, placeholders)
-	fmt.Println(q)
+
+	if dao.DB.DriverName() == "postgres" {
+	  q += "  RETURNING id"
+
+    stmt, err := dao.DB.PrepareNamed(q)
+    var id int64 = 0
+    if err == nil {
+      err = stmt.Get(&id, "id")
+    }
+    return id, err
+  }
+
+
+  fmt.Println(q)
 	res, err := dao.DB.NamedExec(q, data) // @todo seems we need to do this the hard way...
 	if err != nil {
 		return
