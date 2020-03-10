@@ -7,13 +7,16 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+  _ "github.com/lib/pq"
 )
 
 func TestSqlx(t *testing.T) {
 	var db *sqlx.DB
 
 	// exactly the same as the built-in
-	db, err := sqlx.Open("sqlite3", ":memory:")
+
+	//db, err := sqlx.Open("sqlite3", ":memory:")
+	db, err := sqlx.Connect("postgres", "host=localhost user=example password=example dbname=example sslmode=disable")
 	if err != nil {
 		t.Errorf("Error opening sqlx: %s", err)
 	}
@@ -22,11 +25,24 @@ func TestSqlx(t *testing.T) {
 		t.Errorf("Error pinging sqlx: %s", err)
 	}
 
-	schema := `CREATE TABLE places (
+	var schema string
+	if db.DriverName() == "postgres" {
+
+    _, err = db.Exec("DROP TABLE IF EXISTS places")
+
+    schema = `CREATE TABLE places (
+    id SERIAL ,
+    country text,
+    city text NULL,
+    telcode integer);`
+  } else {
+
+    schema = `CREATE TABLE places (
     id INTEGER PRIMARY KEY AUTOINCREMENT ,
     country text,
     city text NULL,
     telcode integer);`
+  }
 
 	// execute a query on the server
 	_, err = db.Exec(schema)
