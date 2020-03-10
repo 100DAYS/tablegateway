@@ -63,6 +63,7 @@ func NullTime(s time.Time) sql.NullTime {
 func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 	if dao.names == "" {
 		fields := dao.DB.Mapper.FieldMap(reflect.ValueOf(data))
+
 		// FieldMap maps Substructs with a path-structure like: parent.child where parent is the name of the field
 		// in the main struct and child ist the name of one of the fields in the sub-struct.
 		// we will need to scan for such paths and make sure that ony the fieldnames of the main struct are returned
@@ -73,7 +74,9 @@ func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 		for k := range fields {
 			if strings.Contains(k, ".") {
 				parts := strings.Split(k, ".")
-				mainkeys[parts[0]] = 1
+				if parts[0] != dao.KeyFieldName {
+          mainkeys[parts[0]] = 1
+        }
 			} else {
 				keys[i] = k
 				i++
@@ -99,6 +102,7 @@ func (dao *TableGateway) Insert(data interface{}) (lastInsertId int64, err error
 	fields := dao.getDBFieldnames(data)
 	placeholders := makePlaceholders(fields)
 	q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", dao.TableName, fields, placeholders)
+	fmt.Println(q)
 	res, err := dao.DB.NamedExec(q, data) // @todo seems we need to do this the hard way...
 	if err != nil {
 		return
