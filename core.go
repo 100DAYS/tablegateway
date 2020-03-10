@@ -87,8 +87,10 @@ func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 		for k := range fields {
 			if strings.Contains(k, ".") {
 				parts := strings.Split(k, ".")
-				mainkeys[parts[0]] = 1
-			} else {
+        if parts[0] != dao.KeyFieldName {
+          mainkeys[parts[0]] = 1
+        }
+      } else {
 				keys[i] = k
 				i++
 			}
