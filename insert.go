@@ -18,6 +18,20 @@ func isIntFieldNull(idField reflect.Value) bool {
 	return false
 }
 
+func concatListExcluding(src *map[string]int, ignore string) string {
+	var b bytes.Buffer
+	for k := range *src {
+		if k != ignore {
+			if b.Len() == 0 {
+				b.WriteString(k)
+			} else {
+				b.WriteString("," + k)
+			}
+		}
+	}
+	return b.String()
+}
+
 func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 	fields := dao.DB.Mapper.FieldMap(reflect.ValueOf(data))
 	if dao.nameHash == nil {
@@ -46,18 +60,7 @@ func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 	}
 
 	// now assemble the field list string from the resulting hash, omitting blacklisted fields...
-	var b bytes.Buffer
-	for k := range dao.nameHash {
-		if k != ignoreField {
-			if b.Len() == 0 {
-				b.WriteString(k)
-			} else {
-				b.WriteString("," + k)
-			}
-		}
-	}
-
-	return b.String()
+	return concatListExcluding(&dao.nameHash, ignoreField)
 }
 
 func makePlaceholders(fields string) string {
