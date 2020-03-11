@@ -32,33 +32,36 @@ func concatListExcluding(src *map[string]int, ignore string) string {
 	return b.String()
 }
 
+func extractFieldNamesUnique(fields *map[string]reflect.Value) (res map[string]int) {
+	res = make(map[string]int, len(*fields))
+
+	for k := range *fields {
+		// check for names like "id.Int64" because these have been expanded by the Mapper
+		// from structs like sql.NullInt64. For such fields, only the part before the "." are needed
+		if strings.Contains(k, ".") {
+			parts := strings.Split(k, ".")
+			res[parts[0]] = 1
+		} else {
+			res[k] = 1
+		}
+	}
+	return
+}
+
 func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 	fields := dao.DB.Mapper.FieldMap(reflect.ValueOf(data))
 	if dao.nameHash == nil {
 		// FieldMap maps Substructs with a path-structure like: parent.child where parent is the name of the field
 		// in the main struct and child ist the name of one of the fields in the sub-struct.
 		// we will need to scan for such paths and make sure that ony the fieldnames of the main struct are returned
-		dao.nameHash = make(map[string]int, len(fields))
-
-		for k := range fields {
-			// check for names like "id.Int64" because these have been expanded by the Mapper
-			// from structs like sql.NullInt64. For such fields, only the part before the "." are needed
-			if strings.Contains(k, ".") {
-				parts := strings.Split(k, ".")
-				dao.nameHash[parts[0]] = 1
-			} else {
-				dao.nameHash[k] = 1
-			}
-		}
+		dao.nameHash = extractFieldNamesUnique(&fields)
 	}
-
 	// check if primaryKeyField is a NullInt64 and it is nil. If so, skip field
 	ignoreField := ""
 	idField, found := fields[dao.KeyFieldName]
 	if found && isIntFieldNull(idField) {
 		ignoreField = dao.KeyFieldName
 	}
-
 	// now assemble the field list string from the resulting hash, omitting blacklisted fields...
 	return concatListExcluding(&dao.nameHash, ignoreField)
 }
