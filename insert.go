@@ -1,11 +1,20 @@
 package tablegateway
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
 )
+
+func isIntFieldNull(idField reflect.Value) bool {
+	if idField.Type() == reflect.TypeOf(sql.NullInt64{0, false}) {
+		ni, _ := idField.Interface().(sql.NullInt64)
+		return !ni.Valid
+	}
+	return false
+}
 
 func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 	fields := dao.DB.Mapper.FieldMap(reflect.ValueOf(data))
@@ -26,26 +35,27 @@ func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 			}
 		}
 	}
+
 	// check if primaryKeyField is a NullInt64 and it is nil. If so, skip field
-	removeKeyField := 0
+	ignoreField := ""
 	idField, found := fields[dao.KeyFieldName]
-	if found && idField.Type() == reflect.TypeOf(sql.NullInt64{0, false}) {
-		ni, _ := idField.Interface().(sql.NullInt64)
-		if !ni.Valid {
-			removeKeyField = 1
-		}
+	if found && isIntFieldNull(idField) {
+		ignoreField = dao.KeyFieldName
 	}
+
 	// now assemble the field list string from the resulting hash, omitting blacklisted fields...
-	names := make([]string, len(dao.nameHash)-removeKeyField)
-	i := 0
+	var b bytes.Buffer
 	for k := range dao.nameHash {
-		if removeKeyField == 0 || k != dao.KeyFieldName {
-			names[i] = k
-			i++
+		if k != ignoreField {
+			if b.Len() == 0 {
+				b.WriteString(k)
+			} else {
+				b.WriteString("," + k)
+			}
 		}
 	}
 
-	return strings.Join(names, ",")
+	return b.String()
 }
 
 func makePlaceholders(fields string) string {
