@@ -108,25 +108,36 @@ func makePlaceholders(fields string) string {
 	return ":" + strings.ReplaceAll(fields, ",", ",:")
 }
 
-func (dao *TableGateway) Insert(data interface{}) (lastInsertId int64, err error) {
+func (dao *TableGateway) insertPostgres(data interface{}) (lastInsertId int64, err error) {
 	fields := dao.getDBFieldnames(data)
 	placeholders := makePlaceholders(fields)
-	if dao.isPostgres {
-		q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) RETURNING %s", dao.TableName, fields, placeholders, dao.KeyFieldName)
-		stmt, err := dao.DB.PrepareNamed(q)
-		if err != nil {
-			return 0, err
-		}
-		err = stmt.Get(&lastInsertId, data)
-	} else {
-		q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", dao.TableName, fields, placeholders)
-		res, err := dao.DB.NamedExec(q, data)
-		if err != nil {
-			return 0, err
-		}
-		lastInsertId, err = res.LastInsertId()
+	q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) RETURNING %s", dao.TableName, fields, placeholders, dao.KeyFieldName)
+	stmt, err := dao.DB.PrepareNamed(q)
+	if err != nil {
+		return 0, err
 	}
+	err = stmt.Get(&lastInsertId, data)
 	return
+}
+
+func (dao *TableGateway) insertMysql(data interface{}) (lastInsertId int64, err error) {
+	fields := dao.getDBFieldnames(data)
+	placeholders := makePlaceholders(fields)
+	q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", dao.TableName, fields, placeholders)
+	res, err := dao.DB.NamedExec(q, data)
+	if err != nil {
+		return 0, err
+	}
+	lastInsertId, err = res.LastInsertId()
+	return
+}
+
+func (dao *TableGateway) Insert(data interface{}) (lastInsertId int64, err error) {
+	if dao.isPostgres {
+		return dao.insertPostgres(data)
+	} else {
+		return dao.insertMysql(data)
+	}
 }
 
 func (dao *TableGateway) Exec(qb squirrel.Sqlizer) (affected int64, err error) {
