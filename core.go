@@ -1,6 +1,9 @@
 package tablegateway
 
 import (
+	"database/sql"
+	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -9,9 +12,9 @@ import (
 
 type TableDataGateway interface {
 	Find(int64, interface{}) error
-	Update(int64, map[string]interface{}) error
-	Insert(interface{}) error
-	Delete(int64) error
+	Update(int64, map[string]interface{}) (int64, error)
+	Insert(interface{}) (int64, error)
+	Delete(int64) (int64, error)
 }
 
 type AutomatableTableDataGateway interface {
@@ -19,6 +22,7 @@ type AutomatableTableDataGateway interface {
 	GetStruct() interface{}
 	GetStructList() *[]interface{}
 	FilterQuery(filters map[string]interface{}, order []string, offest int, limit int, into *[]interface{}) error
+	GetId(interface{}) (int64, error)
 }
 
 type TableGateway struct {
@@ -97,11 +101,6 @@ func (dao *TableGateway) Builder() squirrel.StatementBuilderType {
 	return dao.sq
 }
 
-func (dao *TableGateway) FilterQuery(filters map[string]interface{}, order []string, offset uint64, limit int, into interface{}) error {
-	qb := dao.SelectBuilder().Where(filters).OrderBy(strings.Join(order, ",")).Offset(offset).Limit(uint64(limit))
-	return dao.Query(qb, into)
-}
-
 func (dao *TableGateway) Query(builder squirrel.SelectBuilder, into interface{}) error {
 	var s, args, err = builder.ToSql()
 	if err != nil {
@@ -109,4 +108,27 @@ func (dao *TableGateway) Query(builder squirrel.SelectBuilder, into interface{})
 	}
 	err = dao.DB.Select(into, s, args...)
 	return err
+}
+
+func (dao *TableGateway) FilterQuery(filters map[string]interface{}, order []string, offset uint64, limit int, into interface{}) error {
+	qb := dao.SelectBuilder().Where(filters).OrderBy(strings.Join(order, ",")).Offset(offset).Limit(uint64(limit))
+	return dao.Query(qb, into)
+}
+
+func (dao *TableGateway) GetId(rec interface{}) (int64, error) {
+	fields := dao.DB.Mapper.FieldMap(reflect.ValueOf(rec))
+	idField, found := fields[dao.KeyFieldName]
+	if !found {
+		return 0, fmt.Errorf("Id Field %s not found in struct", dao.KeyFieldName)
+	}
+	if idField.Type() == reflect.TypeOf(refIdStructType) {
+		ni, _ := idField.Interface().(sql.NullInt64)
+		if ni.Valid {
+			return ni.Int64, nil
+		} else {
+			return 0, nil // 0 means: id not set
+		}
+	} else {
+		return idField.Int(), nil
+	}
 }
