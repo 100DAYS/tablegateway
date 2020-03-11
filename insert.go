@@ -8,8 +8,10 @@ import (
 	"strings"
 )
 
+var refIdStructType sql.NullInt64
+
 func isIntFieldNull(idField reflect.Value) bool {
-	if idField.Type() == reflect.TypeOf(sql.NullInt64{0, false}) {
+	if idField.Type() == reflect.TypeOf(refIdStructType) {
 		ni, _ := idField.Interface().(sql.NullInt64)
 		return !ni.Valid
 	}
