@@ -47,7 +47,7 @@ func (dao *TableGateway) getDBFieldnames(data interface{}) string {
 	return dao.names
 }
 
-func (dao *TableGateway) makePlaceholders(fields string) string {
+func makePlaceholders(fields string) string {
 	if fields == "" {
 		return ""
 	}
@@ -56,7 +56,7 @@ func (dao *TableGateway) makePlaceholders(fields string) string {
 
 func (dao *TableGateway) insertPostgres(data interface{}) (lastInsertId int64, err error) {
 	fields := dao.getDBFieldnames(data)
-	placeholders := dao.makePlaceholders(fields)
+	placeholders := makePlaceholders(fields)
 	q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) RETURNING %s", dao.TableName, fields, placeholders, dao.KeyFieldName)
 	stmt, err := dao.DB.PrepareNamed(q)
 	if err != nil {
@@ -68,7 +68,7 @@ func (dao *TableGateway) insertPostgres(data interface{}) (lastInsertId int64, e
 
 func (dao *TableGateway) insertMysql(data interface{}) (lastInsertId int64, err error) {
 	fields := dao.getDBFieldnames(data)
-	placeholders := dao.makePlaceholders(fields)
+	placeholders := makePlaceholders(fields)
 	q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", dao.TableName, fields, placeholders)
 	res, err := dao.DB.NamedExec(q, data)
 	if err != nil {
