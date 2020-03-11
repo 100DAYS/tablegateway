@@ -25,7 +25,7 @@ type TableGateway struct {
 	DB           *sqlx.DB
 	TableName    string
 	KeyFieldName string
-	names        string
+	nameHash     map[string]int
 	isPostgres   bool
 	sq           squirrel.StatementBuilderType
 }
