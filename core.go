@@ -1,7 +1,7 @@
 package tablegateway
 
 import (
-	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strings"
@@ -112,25 +112,28 @@ func (dao *TableGateway) Query(builder squirrel.SelectBuilder, into interface{})
 
 func (dao *TableGateway) FilterQuery(filters map[string]interface{}, order []string, offset int, limit int, into interface{}) error {
 	qb := dao.SelectBuilder().Where(filters).OrderBy(strings.Join(order, ",")).Offset(uint64(offset)).Limit(uint64(limit))
-	//q, args, _ := qb.ToSql()
-	//fmt.Printf("SQL is: %s with args: %#v", q, args)
+	q, args, _ := qb.ToSql()
+	fmt.Printf("SQL is: %s with args: %#v", q, args)
 	return dao.Query(qb, into)
 }
 
-func (dao *TableGateway) GetId(rec interface{}) (int64, error) {
+// This interface schould be Implemented by all sql.NullXXX types
+type Nullable interface {
+	Value() (driver.Value, error)
+}
+
+func (dao *TableGateway) GetId(rec interface{}) (interface{}, error) {
 	fields := dao.DB.Mapper.FieldMap(reflect.ValueOf(rec))
 	idField, found := fields[dao.KeyFieldName]
 	if !found {
 		return 0, fmt.Errorf("Id Field %s not found in struct", dao.KeyFieldName)
 	}
-	if idField.Type() == reflect.TypeOf(refIdStructType) {
-		ni, _ := idField.Interface().(sql.NullInt64)
-		if ni.Valid {
-			return ni.Int64, nil
-		} else {
-			return 0, nil // 0 means: id not set
-		}
+	if n, ok := idField.Interface().(Nullable); ok {
+		dval, err := n.Value() // returns driver.Value
+		return dval, err
+	} else if idField.Kind() == reflect.Struct {
+		return nil, fmt.Errorf("Struct not allowed as ID Field %#v", idField.Interface())
 	} else {
-		return idField.Int(), nil
+		return idField.Interface(), nil
 	}
 }

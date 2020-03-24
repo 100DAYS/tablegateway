@@ -190,8 +190,8 @@ func TestGw(t *testing.T) {
 	fmt.Printf("Record 1: \n%#v\n", p)
 
 	foundId, err := pg.GetId(p)
-	fmt.Printf("GetId says: %d", foundId)
-	if foundId != 1 {
+	fmt.Printf("GetId says: %d\n", foundId)
+	if foundId.(int64) != 1 {
 		t.Errorf("GetID sollte 1 geben, hat aber %d returned.\n", foundId)
 		return
 	}
