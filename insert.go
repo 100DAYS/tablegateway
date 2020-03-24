@@ -89,7 +89,6 @@ func (dao *TableGateway) insertMysql(data interface{}) (lastInsertId int64, err 
 	fields := dao.getDBFieldnames(data)
 	placeholders := makePlaceholders(fields)
 	q := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", dao.TableName, fields, placeholders)
-	fmt.Printf("SQL: %s", q)
 	res, err := dao.DB.NamedExec(q, data)
 	if err != nil {
 		return 0, err

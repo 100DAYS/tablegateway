@@ -20,8 +20,8 @@ type TableDataGateway interface {
 type AutomatableTableDataGateway interface {
 	TableDataGateway
 	GetStruct() interface{}
-	GetStructList() *[]interface{}
-	FilterQuery(filters map[string]interface{}, order []string, offest int, limit int, into *[]interface{}) error
+	GetStructList() interface{}
+	FilterQuery(filters map[string]interface{}, order []string, offset int, limit int, into interface{}) error
 	GetId(interface{}) (int64, error)
 }
 
@@ -110,8 +110,10 @@ func (dao *TableGateway) Query(builder squirrel.SelectBuilder, into interface{})
 	return err
 }
 
-func (dao *TableGateway) FilterQuery(filters map[string]interface{}, order []string, offset uint64, limit int, into interface{}) error {
-	qb := dao.SelectBuilder().Where(filters).OrderBy(strings.Join(order, ",")).Offset(offset).Limit(uint64(limit))
+func (dao *TableGateway) FilterQuery(filters map[string]interface{}, order []string, offset int, limit int, into interface{}) error {
+	qb := dao.SelectBuilder().Where(filters).OrderBy(strings.Join(order, ",")).Offset(uint64(offset)).Limit(uint64(limit))
+	//q, args, _ := qb.ToSql()
+	//fmt.Printf("SQL is: %s with args: %#v", q, args)
 	return dao.Query(qb, into)
 }
 
